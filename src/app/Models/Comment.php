@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Enums\Period;
 
 class Comment extends Model
 {
     use HasFactory;
 
     protected $guarded = [];
+    protected static $relationships = ['user', 'video'];
 
     public function parent()
     {
@@ -29,5 +30,31 @@ class Comment extends Model
     public function replies()
     {
         return $this->hasMany(static::class, 'parent_id');
+    }
+
+    protected static function booted()
+    {
+        static::saving(function (Comment $comment) {
+            $comment->user_id = $comment->user_id ?: auth()->id();
+
+            if ($comment->parent_id) {
+                $comment->video_id = Comment::find($comment->parent_id)->video_id;
+            }
+        });
+    }
+
+    public function isOwnedBy(User $user)
+    {
+        return $this->user_id === $user->id;
+    }
+
+    public function scopeFromPeriod($query, ?Period $period)
+    {
+        return $period ? $query->where('created_at', '>=', $period->date()) : $query;
+    }
+
+    public function scopeSearch($query, ?string $text)
+    {
+        return $query->where('text', 'like', "%$text%");
     }
 }

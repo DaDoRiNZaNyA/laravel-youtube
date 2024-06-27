@@ -2,46 +2,44 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Period;
 use App\Models\Comment;
-use Error;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 
 class CommentController extends Controller
 {
+
     public function index()
     {
-        return Comment::with('parent', 'user', 'video')->get();
+        return Comment::withRelationships(request('with'))
+            ->fromPeriod(Period::tryFrom(request('period')))
+            ->search(request('query'))
+            ->orderBy(request('sort', 'created_at'), request('order', 'desc'))
+            ->simplePaginate(request('limit'));
     }
 
     public function show(Comment $comment)
     {
-        return
-            $comment->loadRelationships(request('with', []));
+        return $comment->loadRelationships(request('with'));
     }
 
     public function store(Request $request)
     {
-        auth()->loginUsingId(1);
+
         $attributes = $request->validate([
             'text' => 'required|string',
             'parent_id' => 'nullable|exists:comments,id',
             'video_id' => 'required_without:parent_id|exists:videos,id'
         ]);
 
-        $attributes['user_id'] = $request->user()->id;
-
-        if ($request->parent_id) {
-            $attributes['video_id'] = Comment::find($request->parent_id)->video_id;
-        }
-
         return Comment::create($attributes);
     }
 
     public function update(Comment $comment, Request $request)
     {
-        auth()->loginUsingId(1);
-        abort_if($request->user()->isNot($comment->user), Response::HTTP_UNAUTHORIZED, 'Unauthorized');
+        Gate::allowIf(fn (User $user) => $comment->isOwnedBy($user));
         $attributes = $request->validate([
             'text' => 'required|string',
         ]);
@@ -51,10 +49,9 @@ class CommentController extends Controller
         return $comment;
     }
 
-    public function delete(Comment $comment, Request $request)
+    public function delete(Comment $comment)
     {
-        auth()->loginUsingId(1);
-        abort_if($request->user()->isNot($comment->user), Response::HTTP_UNAUTHORIZED, 'Unauthorized');
+        Gate::allowIf(fn (User $user) => $comment->isOwnedBy($user));
 
         return Comment::destroy($comment->id);
     }
