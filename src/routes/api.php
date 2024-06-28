@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Auth\RegisterUserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CategoryController;
@@ -31,6 +34,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/comments', [CommentController::class, 'store']);
     Route::put('/comments/{comment}', [CommentController::class, 'update']);
     Route::delete('/comments/{comment}', [CommentController::class, 'delete']);
+    Route::delete('/personal-access-tokens', [PersonalAccessTokenController::class, 'delete']);
+    Route::post('/logout', [AuthenticatedSessionController::class, 'logout']);
+    Route::delete('/delete-account', [AuthenticatedSessionController::class, 'destroy']);
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
 });
 
 Route::post('/personal-access-tokens', [PersonalAccessTokenController::class, 'store']);
+
+Route::post('/register', [RegisterUserController::class, 'store']);
+Route::post('/login', [AuthenticatedSessionController::class, 'store']);
